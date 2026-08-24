@@ -40,7 +40,7 @@ The plugin uses Laravel Forge's current organization-scoped API. It only reads f
 | Primary domain and aliases | Domain and aliases | DNS is not changed. |
 | Environment variables | Site `.env` | Values are never exposed in the preview response. |
 | Database setup | Vito database and user | Names are matched/editable; missing resources are created and `.env` credentials are rewritten. Tables and rows are not copied. |
-| Deployment script | Vito deployment script | Common Forge variables and paths are translated; the script is not run by the importer. |
+| Deployment script | Vito deployment script | Forge site, branch, Composer, PHP, and commit variables are converted to Vito equivalents; Forge's FPM reload is removed. Unknown `FORGE_*` variables block that resource instead of saving a broken script. The script is not run by the importer. |
 | Scheduled jobs | Vito cron jobs | Existing matching commands are skipped. |
 | Background processes | Vito workers | Imported workers are configured for automatic start and restart. |
 
