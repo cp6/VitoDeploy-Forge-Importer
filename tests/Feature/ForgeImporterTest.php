@@ -1,6 +1,7 @@
 <?php
 
 use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Plugin;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\ServerFeatures\OpenImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -18,6 +19,10 @@ test('authenticated users can open the importer', function () {
     $this->get(route('forge-importer.index'))
         ->assertOk()
         ->assertSee('Laravel Forge Site Importer');
+});
+
+test('the server feature action for opening the importer is active', function () {
+    expect((new OpenImporter($this->server))->active())->toBeTrue();
 });
 
 test('a valid Forge token can be connected without returning it', function () {
