@@ -8,6 +8,8 @@ use App\Models\SourceControl;
 
 class CompatibilityChecker
 {
+    public function __construct(private readonly EnvironmentValues $environment = new EnvironmentValues) {}
+
     public function check(array $manifest, Server $target): array
     {
         $site = $manifest['site'];
@@ -78,8 +80,56 @@ class CompatibilityChecker
                 'node_version' => '22',
                 'package_manager' => 'node',
                 'start_command' => (string) ($site['start_command'] ?? 'npm start'),
+                'database' => $this->databaseDefaults($manifest, $target),
             ],
         ];
+    }
+
+    private function databaseDefaults(array $manifest, Server $target): array
+    {
+        $environment = is_string($manifest['environment'] ?? null) ? $manifest['environment'] : null;
+        $name = $this->environment->get($environment, 'DB_DATABASE')
+            ?: $this->stringValue($manifest['site']['database'] ?? '');
+        $username = $this->environment->get($environment, 'DB_USERNAME');
+        $connection = strtolower($this->environment->get($environment, 'DB_CONNECTION'));
+        $forgeDatabase = collect($manifest['databases'] ?? [])->first(fn (array $database) => ($database['name'] ?? '') === $name);
+        $forgeUser = collect($manifest['database_users'] ?? [])->first(fn (array $user) => ($user['name'] ?? $user['username'] ?? '') === $username);
+        $service = $target->database();
+        $targetDatabase = $name !== '' ? $target->databases()->where('name', $name)->first() : null;
+        $targetUser = $username !== '' ? $target->databaseUsers()->where('username', $username)->first() : null;
+        $localHost = in_array(strtolower($this->environment->get($environment, 'DB_HOST')), ['', '127.0.0.1', 'localhost'], true);
+        $supported = in_array($connection, ['', 'mysql', 'mariadb', 'pgsql', 'postgres', 'postgresql'], true);
+        $available = $name !== '' && $service !== null && $localHost && $supported;
+
+        return [
+            'enabled' => $available,
+            'available' => $name !== '',
+            'name' => $this->safeDatabaseName($name),
+            'username' => $this->safeDatabaseName($username ?: $name.'_user'),
+            'connection' => $connection ?: 'unknown',
+            'host' => $this->environment->get($environment, 'DB_HOST') ?: 'not set',
+            'port' => $this->environment->get($environment, 'DB_PORT') ?: 'default',
+            'has_environment_password' => $this->environment->get($environment, 'DB_PASSWORD') !== '',
+            'forge_database_match' => $forgeDatabase !== null,
+            'forge_user_match' => $forgeUser !== null,
+            'vito_database_match' => $targetDatabase !== null,
+            'vito_user_match' => $targetUser !== null,
+            'vito_database_service' => $service?->name,
+            'reason' => match (true) {
+                $name === '' => 'No DB_DATABASE was found.',
+                $service === null => 'The destination has no database service.',
+                ! $localHost => 'The Forge environment points to a remote database.',
+                ! $supported => 'This database connection is not supported for automatic setup.',
+                default => $targetDatabase ? 'The database will be reused.' : 'A new Vito database and credentials will be created.',
+            },
+        ];
+    }
+
+    private function safeDatabaseName(string $value): string
+    {
+        $value = preg_replace('/[^A-Za-z0-9_-]/', '_', $value) ?? '';
+
+        return substr(trim($value, '_-'), 0, 64);
     }
 
     public function siteType(string $type): string

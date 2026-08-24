@@ -3,20 +3,27 @@
 namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Jobs;
 
 use App\Actions\CronJob\CreateCronJob;
+use App\Actions\Database\CreateDatabase;
+use App\Actions\Database\CreateDatabaseUser;
+use App\Actions\Database\LinkUser;
 use App\Actions\Site\CreateSite;
 use App\Actions\Site\UpdateDeploymentScript;
 use App\Actions\Site\UpdateEnv;
 use App\Actions\Worker\CreateWorker;
 use App\Enums\SiteStatus;
+use App\Models\Database;
+use App\Models\DatabaseUser;
 use App\Models\Server;
 use App\Models\Site;
 use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Import\ContentTranslator;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Import\EnvironmentValues;
 use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Models\ImportRun;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
 use Throwable;
 
 class RunImportJob implements ShouldQueue
@@ -171,9 +178,29 @@ class RunImportJob implements ShouldQueue
     {
         $resources = $selected['resources'] ?? [];
         $forgeDomain = (string) ($manifest['site']['domain'] ?? $manifest['site']['name'] ?? '');
+        $environment = is_string($manifest['environment'] ?? null) ? $manifest['environment'] : null;
 
-        if (($resources['environment'] ?? false) && is_string($manifest['environment'])) {
-            $this->attempt($siteResult, 'environment', fn () => app(UpdateEnv::class)->update($site, ['env' => $manifest['environment']]));
+        if (($resources['database'] ?? false) && ($selected['database']['enabled'] ?? false)) {
+            try {
+                $credentials = $this->configureDatabase($site->server, $selected['database']);
+                $siteResult['resources']['database'] = 'imported';
+                if ($environment !== null) {
+                    if (app(EnvironmentValues::class)->get($environment, 'DB_URL') !== '') {
+                        $credentials['DB_URL'] = $this->databaseUrl($credentials);
+                    }
+                    if (app(EnvironmentValues::class)->get($environment, 'DATABASE_URL') !== '') {
+                        $credentials['DATABASE_URL'] = $this->databaseUrl($credentials);
+                    }
+                    $environment = app(EnvironmentValues::class)->replace($environment, $credentials);
+                }
+            } catch (Throwable $e) {
+                $siteResult['resources']['database'] = 'failed';
+                $siteResult['warnings'][] = 'database: '.$e->getMessage();
+            }
+        }
+
+        if (($resources['environment'] ?? false) && $environment !== null) {
+            $this->attempt($siteResult, 'environment', fn () => app(UpdateEnv::class)->update($site, ['env' => $environment]));
         }
 
         if (($resources['deployment_script'] ?? false) && is_string($manifest['deployment_script'])) {
@@ -224,6 +251,94 @@ class RunImportJob implements ShouldQueue
                 });
             }
         }
+    }
+
+    /** @return array<string, string|int> */
+    private function configureDatabase(Server $server, array $selection): array
+    {
+        $name = (string) ($selection['name'] ?? '');
+        $username = (string) ($selection['username'] ?? '');
+        if ($name === '' || $username === '') {
+            throw new \RuntimeException('Choose both a database name and database user.');
+        }
+
+        $service = $server->database();
+        if ($service === null) {
+            throw new \RuntimeException('The Vito destination has no database service.');
+        }
+
+        /** @var ?Database $database */
+        $database = $server->databases()->where('name', $name)->first();
+        /** @var ?DatabaseUser $databaseUser */
+        $databaseUser = $server->databaseUsers()->where('username', $username)->first();
+        $password = $databaseUser?->password ?: Str::random(40);
+
+        if ($database === null) {
+            [$charset, $collation] = $this->databaseDefaults($server);
+            $input = ['name' => $name, 'charset' => $charset, 'collation' => $collation];
+            if ($databaseUser !== null) {
+                $input += ['user' => true, 'existing_user_id' => $databaseUser->id];
+            } else {
+                $input += ['username' => $username, 'password' => $password];
+            }
+            $database = app(CreateDatabase::class)->create($server, $input);
+            $databaseUser ??= $server->databaseUsers()->where('username', $username)->first();
+        } elseif ($databaseUser === null) {
+            $databaseUser = app(CreateDatabaseUser::class)->create($server, [
+                'username' => $username,
+                'password' => $password,
+                'permission' => 'admin',
+            ], [$database->name]);
+        } elseif (! in_array($database->name, $databaseUser->databases ?? [], true)) {
+            app(LinkUser::class)->link($databaseUser, [
+                'databases' => array_values(array_unique([...($databaseUser->databases ?? []), $database->name])),
+            ]);
+        }
+
+        if ($databaseUser === null || $databaseUser->password === '') {
+            throw new \RuntimeException('The matching Vito database user has no retrievable password; choose a new username.');
+        }
+
+        $connection = match ($service->name) {
+            'postgresql', 'postgres' => 'pgsql',
+            'mariadb' => 'mariadb',
+            default => 'mysql',
+        };
+
+        return [
+            'DB_CONNECTION' => $connection,
+            'DB_HOST' => '127.0.0.1',
+            'DB_PORT' => $connection === 'pgsql' ? 5432 : 3306,
+            'DB_DATABASE' => $database->name,
+            'DB_USERNAME' => $databaseUser->username,
+            'DB_PASSWORD' => $databaseUser->password,
+        ];
+    }
+
+    /** @return array{string, string} */
+    private function databaseDefaults(Server $server): array
+    {
+        $service = $server->database();
+        $charset = (string) data_get($service?->type_data, 'defaultCharset', '');
+        if ($charset === '') {
+            $charset = (string) array_key_first((array) data_get($service?->type_data, 'charsets', []));
+        }
+        $collation = (string) data_get($service?->type_data, 'charsets.'.$charset.'.default', '');
+        if ($charset === '' || $collation === '') {
+            throw new \RuntimeException('Vito has no charset/collation metadata for this database service. Sync the service first.');
+        }
+
+        return [$charset, $collation];
+    }
+
+    /** @param array<string, string|int> $credentials */
+    private function databaseUrl(array $credentials): string
+    {
+        $scheme = $credentials['DB_CONNECTION'] === 'pgsql' ? 'postgresql' : (string) $credentials['DB_CONNECTION'];
+
+        return $scheme.'://'.rawurlencode((string) $credentials['DB_USERNAME'])
+            .':'.rawurlencode((string) $credentials['DB_PASSWORD'])
+            .'@'.$credentials['DB_HOST'].':'.$credentials['DB_PORT'].'/'.rawurlencode((string) $credentials['DB_DATABASE']);
     }
 
     private function attempt(array &$siteResult, string $resource, callable $callback): void

@@ -23,6 +23,12 @@ class ForgeManifestBuilder
 
     public function build(string $organization, string $server, array $siteIds, array $resources): array
     {
+        $databases = in_array('database', $resources, true)
+            ? $this->resources("/orgs/{$organization}/servers/{$server}/database/schemas")
+            : [];
+        $databaseUsers = in_array('database', $resources, true)
+            ? $this->resources("/orgs/{$organization}/servers/{$server}/database/users")
+            : [];
         $serverProcesses = in_array('workers', $resources, true)
             ? $this->resources("/orgs/{$organization}/servers/{$server}/background-processes")
             : [];
@@ -40,6 +46,9 @@ class ForgeManifestBuilder
                 'environment' => in_array('environment', $resources, true)
                     ? $this->content("/orgs/{$organization}/servers/{$server}/sites/{$siteId}/environment", ['environment', 'content'])
                     : null,
+                'databases' => $databases,
+                'database_users' => $databaseUsers,
+                'database_metadata_requested' => in_array('database', $resources, true),
                 'deployment_script' => in_array('deployment_script', $resources, true)
                     ? $this->content("/orgs/{$organization}/servers/{$server}/sites/{$siteId}/deployments/script", ['script', 'content'])
                     : null,
@@ -67,8 +76,21 @@ class ForgeManifestBuilder
             'available' => is_string($redacted['deployment_script']),
             'lines' => is_string($redacted['deployment_script']) ? substr_count($redacted['deployment_script'], "\n") + 1 : 0,
         ];
+        $redacted['databases'] = array_map(fn (array $database) => $this->databaseSummary($database), $redacted['databases'] ?? []);
+        $redacted['database_users'] = array_map(fn (array $user) => $this->databaseSummary($user), $redacted['database_users'] ?? []);
 
         return $redacted;
+    }
+
+    private function databaseSummary(array $resource): array
+    {
+        return array_filter([
+            'id' => (string) ($resource['id'] ?? ''),
+            'name' => (string) ($resource['name'] ?? $resource['username'] ?? ''),
+            'status' => (string) ($resource['status'] ?? ''),
+            'created_at' => $resource['created_at'] ?? $resource['createdAt'] ?? null,
+            'updated_at' => $resource['updated_at'] ?? $resource['updatedAt'] ?? null,
+        ], fn (mixed $value) => $value !== null && $value !== '');
     }
 
     private function resources(string $path): array

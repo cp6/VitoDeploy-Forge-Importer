@@ -75,3 +75,36 @@ test('it detects Laravel and uses Vito defaults while retaining Forge reference 
         ->web_directory->toBe('public')
         ->forge_web_directory->toBe('/home/forge/artisan-detect.example/current/public');
 });
+
+test('it matches database environment values against Forge and Vito resources', function () {
+    $this->server->databases()->create([
+        'name' => 'example_db',
+        'charset' => 'utf8mb3',
+        'collation' => 'utf8mb3_general_ci',
+    ]);
+    $this->server->databaseUsers()->create([
+        'username' => 'example_user',
+        'password' => 'secret-password',
+        'databases' => ['example_db'],
+        'host' => 'localhost',
+        'permission' => 'admin',
+    ]);
+    $manifest = [
+        'site' => ['id' => '45', 'name' => 'database.example', 'app_type' => 'laravel'],
+        'domains' => [],
+        'environment' => "DB_CONNECTION=mysql\nDB_HOST=127.0.0.1\nDB_DATABASE=example_db\nDB_USERNAME=example_user\nDB_PASSWORD=forge-secret",
+        'databases' => [['id' => '10', 'name' => 'example_db']],
+        'database_users' => [['id' => '11', 'name' => 'example_user']],
+    ];
+
+    $database = (new CompatibilityChecker)->check($manifest, $this->server)['defaults']['database'];
+
+    expect($database)
+        ->enabled->toBeTrue()
+        ->forge_database_match->toBeTrue()
+        ->forge_user_match->toBeTrue()
+        ->vito_database_match->toBeTrue()
+        ->vito_user_match->toBeTrue()
+        ->has_environment_password->toBeTrue()
+        ->not->toHaveKey('password');
+});

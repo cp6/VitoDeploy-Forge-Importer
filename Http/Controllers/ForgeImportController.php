@@ -154,7 +154,7 @@ class ForgeImportController extends Controller
             'site_ids.*' => ['required', 'string', 'max:255', 'distinct'],
             'target_server_id' => ['required', 'integer', Rule::exists('servers', 'id')],
             'resources' => ['required', 'array'],
-            'resources.*' => ['string', Rule::in(['domains', 'environment', 'deployment_script', 'cron_jobs', 'workers'])],
+            'resources.*' => ['string', Rule::in(['domains', 'environment', 'database', 'deployment_script', 'cron_jobs', 'workers'])],
         ]);
 
         $target = Server::query()->findOrFail($validated['target_server_id']);
@@ -215,6 +215,10 @@ class ForgeImportController extends Controller
             'sites.*.package_manager' => ['nullable', 'string', Rule::in(['node', 'pnpm', 'yarn', 'bun'])],
             'sites.*.start_command' => ['nullable', 'string', 'max:255'],
             'sites.*.composer' => ['boolean'],
+            'sites.*.database' => ['required', 'array'],
+            'sites.*.database.enabled' => ['required', 'boolean'],
+            'sites.*.database.name' => ['nullable', 'alpha_dash', 'max:64'],
+            'sites.*.database.username' => ['nullable', 'alpha_dash', 'max:64'],
             'sites.*.resources' => ['required', 'array'],
             'sites.*.resources.*' => ['boolean'],
         ]);

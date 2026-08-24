@@ -60,6 +60,7 @@
             <div class="full"><label>Discover resources</label><div class="resource-list" id="global-resources">
                 <label><input type="checkbox" value="domains" checked> Domains/aliases</label>
                 <label><input type="checkbox" value="environment" checked> .env</label>
+                <label><input type="checkbox" value="database" checked> Database metadata/setup</label>
                 <label><input type="checkbox" value="deployment_script" checked> Deployment script</label>
                 <label><input type="checkbox" value="cron_jobs" checked> Cron jobs</label>
                 <label><input type="checkbox" value="workers" checked> Background processes</label>
@@ -132,7 +133,8 @@ function renderPreview() {
     $('plan-expiry').textContent=`Preview expires in ${state.plan.expires_in_minutes} minutes`;
     $('preview-sites').innerHTML=state.plan.sites.map((item,index)=>{
         const d=item.defaults, sc=suggestedSource(d.source_control_provider), checks=item.checks.map(c=>`<div class="check ${c.status}"><span>${c.status==='matched'?'✓':'✕'}</span><span>${esc(c.label)}: <code>${esc(c.value)}</code></span></div>`).join('');
-        const res={domains:true,environment:item.environment.available,deployment_script:item.deployment_script.available,cron_jobs:item.cron_jobs.length>0,workers:item.workers.length>0};
+        const db=d.database;
+        const res={domains:true,environment:item.environment.available,database:db.available,deployment_script:item.deployment_script.available,cron_jobs:item.cron_jobs.length>0,workers:item.workers.length>0};
         return `<article class="site-card" data-index="${index}" data-site-type="${esc(d.type)}">
           <div class="row between"><div><h3>${esc(d.domain)}</h3><p>Forge site ${esc(d.forge_site_id)}</p></div><label class="row"><input class="site-enabled" type="checkbox" checked> Import site</label></div>
           <div style="margin:9px 0">${checks}</div>
@@ -150,8 +152,17 @@ function renderPreview() {
             <div data-type-group="node"><label>Node version</label><input data-field="node_version" value="${esc(d.node_version)}"></div>
             <div data-type-group="proxy"><label>Start command</label><input data-field="start_command" value="${esc(d.start_command)}"></div>
           </div>
+          <div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px">
+            <div class="row between"><div><strong>Database setup</strong><p class="hint">${esc(db.reason)} Database contents are not copied.</p></div><label class="row"><input data-field="database_enabled" type="checkbox" ${db.enabled?'checked':''} ${db.available?'':'disabled'}> Create/reuse and update .env</label></div>
+            <div class="grid grid-3" style="margin-top:10px">
+              <div><label>Database name</label><input data-field="database_name" value="${esc(db.name)}"></div>
+              <div><label>Database user</label><input data-field="database_username" value="${esc(db.username)}"></div>
+              <div><label>Detected Forge connection</label><input value="${esc(db.connection)} · ${esc(db.host)}:${esc(db.port)}" disabled></div>
+            </div>
+            <div class="hint">${db.forge_database_match?'✓':'○'} Forge database match · ${db.forge_user_match?'✓':'○'} Forge user match · ${db.vito_database_match?'✓':'○'} Vito database match · ${db.vito_user_match?'✓':'○'} Vito user match${db.has_environment_password?' · password found privately in .env':' · no password returned by Forge'}</div>
+          </div>
           <div class="resource-list"><strong>Import:</strong>
-            ${resourceToggle('domains','Domains/aliases',res.domains)}${resourceToggle('environment',`.env (${item.environment.keys.length} keys)`,res.environment)}${resourceToggle('deployment_script',`Deployment script (${item.deployment_script.lines} lines)`,res.deployment_script)}${resourceToggle('cron_jobs',`Cron jobs (${item.cron_jobs.length})`,res.cron_jobs)}${resourceToggle('workers',`Processes (${item.workers.length})`,res.workers)}
+            ${resourceToggle('domains','Domains/aliases',res.domains)}${resourceToggle('environment',`.env (${item.environment.keys.length} keys)`,res.environment)}${resourceToggle('database','Database setup',res.database)}${resourceToggle('deployment_script',`Deployment script (${item.deployment_script.lines} lines)`,res.deployment_script)}${resourceToggle('cron_jobs',`Cron jobs (${item.cron_jobs.length})`,res.cron_jobs)}${resourceToggle('workers',`Processes (${item.workers.length})`,res.workers)}
             <label data-type-group="composer"><input data-field="composer" type="checkbox"> Run Composer during site creation</label>
           </div>
         </article>`;
@@ -176,7 +187,7 @@ function syncTypeFields(card) {
 function resourceToggle(key,label,available) { return `<label title="${available?'':'Not returned by Forge'}"><input data-resource="${key}" type="checkbox" ${available?'checked':'disabled'}> ${esc(label)}</label>`; }
 function collectSites() {
     return [...document.querySelectorAll('.site-card')].map((card,index)=>{ const d=state.plan.sites[index].defaults, value=(name)=>card.querySelector(`[data-field="${name}"]`); const resources={}; card.querySelectorAll('[data-resource]').forEach(i=>resources[i.dataset.resource]=i.checked);
-      return {forge_site_id:String(d.forge_site_id),enabled:card.querySelector('.site-enabled').checked,domain:value('domain').value.trim(),aliases:value('aliases').value.split(',').map(x=>x.trim()).filter(Boolean),type:value('type').value,user:value('user').value.trim(),php_version:value('php_version').value.trim()||null,source_control_id:value('source_control_id').value?Number(value('source_control_id').value):null,repository:value('repository').value.trim()||null,branch:value('branch').value.trim()||null,web_directory:value('web_directory').value.trim(),port:Number(value('port').value||3000),node_version:value('node_version').value.trim()||'22',package_manager:'node',start_command:value('start_command').value.trim()||null,composer:value('composer').checked,resources};
+      return {forge_site_id:String(d.forge_site_id),enabled:card.querySelector('.site-enabled').checked,domain:value('domain').value.trim(),aliases:value('aliases').value.split(',').map(x=>x.trim()).filter(Boolean),type:value('type').value,user:value('user').value.trim(),php_version:value('php_version').value.trim()||null,source_control_id:value('source_control_id').value?Number(value('source_control_id').value):null,repository:value('repository').value.trim()||null,branch:value('branch').value.trim()||null,web_directory:value('web_directory').value.trim(),port:Number(value('port').value||3000),node_version:value('node_version').value.trim()||'22',package_manager:'node',start_command:value('start_command').value.trim()||null,composer:value('composer').checked,database:{enabled:value('database_enabled').checked,name:value('database_name').value.trim()||null,username:value('database_username').value.trim()||null},resources};
     });
 }
 async function startImport() {

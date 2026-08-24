@@ -14,7 +14,8 @@ The plugin uses Laravel Forge's current organization-scoped API. It only reads f
 - Compare Forge settings with the selected Vito server and show matched or blocked checks.
 - Start from Vito-native defaults for site type, isolated user, web directory, and type-specific fields while showing the original Forge values for reference.
 - Edit the proposed domain, aliases, site type, Linux user, PHP version, source control, repository, branch, web directory, Node version, port, and start command.
-- Independently include or skip aliases, `.env`, deployment scripts, scheduled jobs, and background processes.
+- Independently include or skip aliases, `.env`, database setup, deployment scripts, scheduled jobs, and background processes.
+- Match Forge database metadata and `DB_*` values, then create or reuse editable Vito database/user suggestions with fresh credentials.
 - Translate common Forge paths and deployment variables to their Vito equivalents.
 - Run imports asynchronously, display progress, retain per-resource results, and retry partial failures.
 - Encrypt import snapshots and user selections using Vito's Laravel application key.
@@ -26,6 +27,7 @@ The plugin uses Laravel Forge's current organization-scoped API. It only reads f
 | Site/application | New Vito site | Domain, type, user, runtime, repository, branch, and web directory remain editable. |
 | Primary domain and aliases | Domain and aliases | DNS is not changed. |
 | Environment variables | Site `.env` | Values are never exposed in the preview response. |
+| Database setup | Vito database and user | Names are matched/editable; missing resources are created and `.env` credentials are rewritten. Tables and rows are not copied. |
 | Deployment script | Vito deployment script | Common Forge variables and paths are translated; the script is not run by the importer. |
 | Scheduled jobs | Vito cron jobs | Existing matching commands are skipped. |
 | Background processes | Vito workers | Imported workers are configured for automatic start and restart. |
@@ -36,7 +38,7 @@ The plugin uses Laravel Forge's current organization-scoped API. It only reads f
 - PHP 8.4 or newer
 - A running Vito queue worker
 - A ready destination server in the current Vito project
-- The web server, PHP version, and process-manager services required by the selected sites
+- The web server, PHP version, process-manager, and database services required by the selected resources
 - A Vito source-control connection for repository-backed sites
 - A Laravel Forge API token with these read-only scopes:
   - `organization:view`
@@ -72,7 +74,14 @@ Then install and enable it from Vito's plugin administration screen.
 6. Review the matched/blocked checks and customize every proposed value.
 7. Untick any site or resource that should not be imported.
 8. Start the import and follow the progress report.
-9. Transfer databases and application files separately, test the destination, change DNS, and issue new SSL certificates in Vito.
+9. Optionally let the importer create/reuse the matching Vito database and user and rewrite the imported `DB_*` values with fresh Vito credentials.
+10. Transfer database **contents** and application files separately, test the destination, change DNS, and issue new SSL certificates in Vito.
+
+### Database import details
+
+With **Database metadata/setup** selected, the preview compares the site's `DB_*` environment values with Forge database schemas/users and the destination Vito server. Each site can be enabled or skipped independently, and its proposed database and username are editable.
+
+Forge exposes database/user IDs, names, status and timestamps, but its database resource endpoints do not return passwords or data. The importer therefore creates missing Vito resources with a fresh credential (or safely reuses an existing Vito user), then rewrites `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` in the imported environment. It does not copy tables or rows.
 
 The Forge token remains in the encrypted Vito session while connected. Use **Disconnect** when finished.
 
@@ -93,7 +102,8 @@ Override these values through the host application's `forge-import` configuratio
 
 ## Not migrated
 
-- Database schemas, contents, users, or passwords
+- Database tables, rows, routines, triggers, or other contents
+- Existing Forge database passwords (the importer generates or reuses Vito credentials)
 - Uploaded files, storage directories, or other shared application files
 - DNS records
 - SSL certificates or private keys
