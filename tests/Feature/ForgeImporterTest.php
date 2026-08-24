@@ -33,6 +33,19 @@ test('the server feature action for opening the importer is active', function ()
     expect((new OpenImporter($this->server))->active())->toBeTrue();
 });
 
+test('the server feature modal action navigates to the importer', function () {
+    $this->withHeader('X-Inertia', 'true')
+        ->post(route('server-features.action', [
+            'server' => $this->server,
+            'feature' => 'forge-importer',
+            'action' => 'open',
+        ]))
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', route('forge-importer.index', [
+            'server' => $this->server->id,
+        ]));
+});
+
 test('a valid Forge token can be connected without returning it', function () {
     Http::fake([
         'https://forge.laravel.com/api/orgs' => Http::response([

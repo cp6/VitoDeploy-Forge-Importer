@@ -5,7 +5,9 @@ namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter\ServerFeatures;
 use App\DTOs\DynamicField;
 use App\DTOs\DynamicForm;
 use App\ServerFeatures\Action;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class OpenImporter extends Action
 {
@@ -32,6 +34,10 @@ class OpenImporter extends Action
 
     public function handle(Request $request): void
     {
-        // The form contains a direct link to the importer; there is no server mutation.
+        throw new HttpResponseException(
+            Inertia::location(
+                route('forge-importer.index', ['server' => $this->server->id]),
+            ),
+        );
     }
 }
