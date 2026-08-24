@@ -9,6 +9,7 @@ class ContentTranslator
 {
     public function deploymentScript(string $content, Site $site): string
     {
+        $content = $this->normalizeEscapedShellContent($content);
         $content = $this->removeForgeFpmRestart($content);
         $content = $this->translateVariables($content);
         $content = str_replace('/home/forge/'.$site->domain, $site->path, $content);
@@ -19,6 +20,7 @@ class ContentTranslator
 
     public function command(string $command, Site $site, ?string $forgeDomain = null): string
     {
+        $command = $this->normalizeEscapedShellContent($command);
         $command = $this->translateVariables($command);
         if ($forgeDomain) {
             $command = str_replace('/home/forge/'.$forgeDomain, $site->path, $command);
@@ -51,6 +53,19 @@ class ContentTranslator
             ],
             $content,
         );
+    }
+
+    private function normalizeEscapedShellContent(string $content): string
+    {
+        $content = preg_replace_callback(
+            '~\$\{?(?:FORGE|PHP)(?:\\\\?_[A-Z0-9]+)+\}?~',
+            fn (array $matches): string => str_replace('\\_', '_', $matches[0]),
+            $content,
+        ) ?? $content;
+
+        // Some Forge API responses contain Markdown line-break escapes. They
+        // are not shell continuations because they arrive on their own line.
+        return preg_replace('~^\h*\\\\\h*$\R?~m', '', $content) ?? $content;
     }
 
     private function removeForgeFpmRestart(string $content): string

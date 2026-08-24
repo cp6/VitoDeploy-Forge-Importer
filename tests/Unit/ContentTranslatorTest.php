@@ -51,6 +51,39 @@ SCRIPT, $site);
         ->not->toContain('sudo -S service');
 });
 
+test('it converts Markdown-escaped Forge deployment scripts to Vito', function () {
+    $site = new Site([
+        'domain' => 'demo.myidlers.com',
+        'path' => '/home/demomyidlers/demo.myidlers.com',
+    ]);
+
+    $translated = (new ContentTranslator)->deploymentScript(<<<'SCRIPT'
+cd /home/demomyidlers/demo.myidlers.com
+git fetch origin
+git reset --hard origin/main
+git pull origin $FORGE\_SITE\_BRANCH
+\
+$FORGE\_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+\
+( flock -w 10 9 || exit 1
+    echo 'Restarting FPM...'; sudo -S service $PHP\_PATH\_FPM reload ) 9>/tmp/fpmlock
+\
+if [ -f artisan ]; then
+    $PHP\_PATH artisan migrate --force
+fi
+SCRIPT, $site);
+
+    expect($translated)
+        ->toContain('git pull origin $BRANCH')
+        ->toContain('composer install --no-dev')
+        ->toContain('$PHP_PATH artisan migrate --force')
+        ->toContain('# PHP-FPM reload is managed by Vito.')
+        ->not->toContain('FORGE')
+        ->not->toContain('PHP_PATH_FPM')
+        ->not->toContain("\n\\\n")
+        ->not->toContain('sudo -S service');
+});
+
 test('it translates Forge variables in cron jobs and worker commands', function () {
     $site = new Site(['path' => '/home/example/example.com']);
 
