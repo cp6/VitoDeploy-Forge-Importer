@@ -7,6 +7,16 @@ A VitoDeploy 4.x plugin for previewing and importing one or many Laravel Forge s
 
 The plugin uses Laravel Forge's current organization-scoped API. It only reads from Forge and never changes or deletes the source sites.
 
+## Screenshots
+
+### Connect and select sites
+
+![Forge importer connection and site selection screen](docs/screenshots/forge-importer-setup.png)
+
+### Review and customize the import plan
+
+![Forge importer review screen showing compatibility checks and editable site settings](docs/screenshots/forge-importer-review.png)
+
 ## Features
 
 - Import a single site or multiple sites in one run (10 by default).
