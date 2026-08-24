@@ -1,0 +1,14 @@
+{
+    "name": "cp6/vitodeploy-forge-importer",
+    "description": "Preview and import one or many Laravel Forge sites into VitoDeploy with a customizable GUI.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\Vito\\Plugins\\Cp6\\VitoDeployForgeImport\\": ""
+        }
+    }
+}
