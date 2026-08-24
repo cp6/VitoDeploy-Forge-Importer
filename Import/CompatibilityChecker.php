@@ -24,6 +24,7 @@ class CompatibilityChecker
         $branch = $this->stringValue(
             $site['branch'] ?? $site['repository_branch'] ?? $repositoryData['branch'],
         ) ?: 'main';
+        $databaseConnection = $this->databaseConnection($manifest);
 
         $checks = [
             $this->makeCheck('domain', 'Domain is available', $domain !== '' && ! Site::query()->where('server_id', $target->id)->where('domain', $domain)->exists(), $domain ?: 'Missing domain'),
@@ -33,6 +34,10 @@ class CompatibilityChecker
 
         if ($php !== null && in_array($mappedType, ['laravel', 'php', 'php-blank'], true)) {
             $checks[] = $this->makeCheck('php', 'PHP version is installed', in_array($php, $target->installedPHPVersions(), true), $php);
+        }
+
+        if ($databaseConnection !== '') {
+            $checks[] = $this->makeCheck('database', 'Database configuration found', true, $databaseConnection);
         }
 
         if (in_array($mappedType, ['node', 'blank'], true)) {
@@ -123,6 +128,24 @@ class CompatibilityChecker
                 default => $targetDatabase ? 'The database will be reused.' : 'A new Vito database and credentials will be created.',
             },
         ];
+    }
+
+    private function databaseConnection(array $manifest): string
+    {
+        $environment = is_string($manifest['environment'] ?? null) ? $manifest['environment'] : null;
+        $connection = strtolower($this->environment->get($environment, 'DB_CONNECTION'));
+        if ($connection !== '') {
+            return $connection;
+        }
+
+        $url = $this->environment->get($environment, 'DB_URL')
+            ?: $this->environment->get($environment, 'DATABASE_URL');
+        $scheme = is_string(parse_url($url, PHP_URL_SCHEME)) ? strtolower((string) parse_url($url, PHP_URL_SCHEME)) : '';
+
+        return match ($scheme) {
+            'postgres', 'postgresql' => 'pgsql',
+            default => $scheme,
+        };
     }
 
     private function safeDatabaseName(string $value): string
