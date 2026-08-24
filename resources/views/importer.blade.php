@@ -24,6 +24,7 @@
         .site-card { border:1px solid var(--line); border-radius:10px; padding:15px; margin-top:13px } .site-card.disabled { opacity:.58 }
         .progress { height:9px; background:var(--line); border-radius:99px; overflow:hidden; margin:12px 0 } .progress span { display:block; height:100%; width:0; background:var(--brand); transition:width .3s }
         .result-site { border-top:1px solid var(--line); padding:10px 0 } code { background:var(--bg); border:1px solid var(--line); padding:1px 4px; border-radius:4px }
+        .hint { font-size:12px; margin-top:4px }
         @media(max-width:760px){ .grid,.grid-3{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column} }
     </style>
 </head>
@@ -132,30 +133,45 @@ function renderPreview() {
     $('preview-sites').innerHTML=state.plan.sites.map((item,index)=>{
         const d=item.defaults, sc=suggestedSource(d.source_control_provider), checks=item.checks.map(c=>`<div class="check ${c.status}"><span>${c.status==='matched'?'✓':'✕'}</span><span>${esc(c.label)}: <code>${esc(c.value)}</code></span></div>`).join('');
         const res={domains:true,environment:item.environment.available,deployment_script:item.deployment_script.available,cron_jobs:item.cron_jobs.length>0,workers:item.workers.length>0};
-        return `<article class="site-card" data-index="${index}">
+        return `<article class="site-card" data-index="${index}" data-site-type="${esc(d.type)}">
           <div class="row between"><div><h3>${esc(d.domain)}</h3><p>Forge site ${esc(d.forge_site_id)}</p></div><label class="row"><input class="site-enabled" type="checkbox" checked> Import site</label></div>
           <div style="margin:9px 0">${checks}</div>
           <div class="grid grid-3">
             <div><label>Domain</label><input data-field="domain" value="${esc(d.domain)}"></div>
             <div><label>Vito site type</label><select data-field="type">${selectOptions(CONFIG.siteTypes,d.type)}</select></div>
-            <div><label>Site user</label><input data-field="user" value="${esc(d.user)}"></div>
-            <div><label>PHP version</label><input data-field="php_version" value="${esc(d.php_version)}"></div>
-            <div><label>Web directory</label><input data-field="web_directory" value="${esc(d.web_directory)}"></div>
+            <div><label>Site user</label><input data-field="user" value="${esc(d.user)}"><p class="hint">Vito suggested isolated user. Forge value: <code>${esc(d.forge_user || 'not provided')}</code></p></div>
+            <div data-type-group="php"><label>PHP version</label><input data-field="php_version" value="${esc(d.php_version)}"></div>
+            <div data-type-group="php"><label>Web directory</label><input data-field="web_directory" value="${esc(d.web_directory)}"><p class="hint">Forge value: <code>${esc(d.forge_web_directory || 'site root')}</code></p></div>
             <div><label>Aliases (comma-separated)</label><input data-field="aliases" value="${esc(d.aliases.join(', '))}"></div>
-            <div><label>Source control</label><select data-field="source_control_id"><option value="">None</option>${selectOptions(CONFIG.sourceControls,sc,x=>x.id,x=>`${x.provider} · ${x.profile}`)}</select></div>
-            <div><label>Repository</label><input data-field="repository" value="${esc(d.repository)}"></div>
-            <div><label>Branch</label><input data-field="branch" value="${esc(d.branch)}"></div>
-            <div><label>App port</label><input data-field="port" type="number" value="${esc(d.port)}"></div>
-            <div><label>Node version</label><input data-field="node_version" value="${esc(d.node_version)}"></div>
-            <div><label>Start command</label><input data-field="start_command" value="${esc(d.start_command)}"></div>
+            <div data-type-group="source"><label>Source control</label><select data-field="source_control_id"><option value="">None</option>${selectOptions(CONFIG.sourceControls,sc,x=>x.id,x=>`${x.provider} · ${x.profile}`)}</select></div>
+            <div data-type-group="source"><label>Repository</label><input data-field="repository" value="${esc(d.repository)}"></div>
+            <div data-type-group="source"><label>Branch</label><input data-field="branch" value="${esc(d.branch)}"></div>
+            <div data-type-group="proxy"><label>App port</label><input data-field="port" type="number" value="${esc(d.port)}"><p class="hint">Required by Vito for Node and reverse-proxy sites.</p></div>
+            <div data-type-group="node"><label>Node version</label><input data-field="node_version" value="${esc(d.node_version)}"></div>
+            <div data-type-group="proxy"><label>Start command</label><input data-field="start_command" value="${esc(d.start_command)}"></div>
           </div>
           <div class="resource-list"><strong>Import:</strong>
             ${resourceToggle('domains','Domains/aliases',res.domains)}${resourceToggle('environment',`.env (${item.environment.keys.length} keys)`,res.environment)}${resourceToggle('deployment_script',`Deployment script (${item.deployment_script.lines} lines)`,res.deployment_script)}${resourceToggle('cron_jobs',`Cron jobs (${item.cron_jobs.length})`,res.cron_jobs)}${resourceToggle('workers',`Processes (${item.workers.length})`,res.workers)}
-            <label><input data-field="composer" type="checkbox"> Run Composer during site creation</label>
+            <label data-type-group="composer"><input data-field="composer" type="checkbox"> Run Composer during site creation</label>
           </div>
         </article>`;
     }).join('');
     document.querySelectorAll('.site-enabled').forEach(box=>box.addEventListener('change',()=>box.closest('.site-card').classList.toggle('disabled',!box.checked)));
+    document.querySelectorAll('.site-card').forEach(card=>{
+      const type=card.querySelector('[data-field="type"]');
+      type.addEventListener('change',()=>{
+        const webDirectory=card.querySelector('[data-field="web_directory"]'), previous=card.dataset.siteType;
+        if(webDirectory && webDirectory.value===vitoWebDirectory(previous)) webDirectory.value=vitoWebDirectory(type.value);
+        card.dataset.siteType=type.value; syncTypeFields(card);
+      });
+      syncTypeFields(card);
+    });
+}
+function vitoWebDirectory(type) { return type==='laravel'?'public':''; }
+function syncTypeFields(card) {
+    const type=card.querySelector('[data-field="type"]').value;
+    const groups={php:['laravel','php','php-blank'],source:['laravel','php','node','blank'],proxy:['node','blank'],node:['node'],composer:['laravel','php']};
+    card.querySelectorAll('[data-type-group]').forEach(field=>field.classList.toggle('hidden',!groups[field.dataset.typeGroup].includes(type)));
 }
 function resourceToggle(key,label,available) { return `<label title="${available?'':'Not returned by Forge'}"><input data-resource="${key}" type="checkbox" ${available?'checked':'disabled'}> ${esc(label)}</label>`; }
 function collectSites() {

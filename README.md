@@ -12,6 +12,7 @@ The plugin uses Laravel Forge's current organization-scoped API. It only reads f
 - Import a single site or multiple sites in one run (10 by default).
 - Browse Forge organizations, servers, and sites from a Vito GUI.
 - Compare Forge settings with the selected Vito server and show matched or blocked checks.
+- Start from Vito-native defaults for site type, isolated user, web directory, and type-specific fields while showing the original Forge values for reference.
 - Edit the proposed domain, aliases, site type, Linux user, PHP version, source control, repository, branch, web directory, Node version, port, and start command.
 - Independently include or skip aliases, `.env`, deployment scripts, scheduled jobs, and background processes.
 - Translate common Forge paths and deployment variables to their Vito equivalents.

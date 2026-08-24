@@ -51,3 +51,27 @@ test('it remains compatible with legacy string repository values', function () {
         ->branch->toBe('main')
         ->source_control_provider->toBe('gitlab');
 });
+
+test('it detects Laravel and uses Vito defaults while retaining Forge reference values', function () {
+    $manifest = [
+        'site' => [
+            'id' => '44',
+            'name' => 'artisan-detect.example',
+            'user' => 'forge',
+            'app_type' => 'php',
+            'web_directory' => '/home/forge/artisan-detect.example/current/public',
+            'deployment_script' => 'php artisan migrate --force',
+            'repository' => 'cp6/laravel-example',
+        ],
+        'domains' => [],
+    ];
+
+    $result = (new CompatibilityChecker)->check($manifest, $this->server);
+
+    expect($result['defaults'])
+        ->type->toBe('laravel')
+        ->user->toBe('artisa')
+        ->forge_user->toBe('forge')
+        ->web_directory->toBe('public')
+        ->forge_web_directory->toBe('/home/forge/artisan-detect.example/current/public');
+});

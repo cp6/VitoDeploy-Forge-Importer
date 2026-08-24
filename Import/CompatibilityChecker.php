@@ -13,7 +13,7 @@ class CompatibilityChecker
         $site = $manifest['site'];
         $domain = $this->domain($site);
         $php = $this->phpVersion($site['php_version'] ?? null);
-        $mappedType = $this->siteType((string) ($site['app_type'] ?? $site['type'] ?? $site['project_type'] ?? 'php'));
+        $mappedType = $this->siteTypeForManifest($manifest);
         $repositoryData = $this->repository($site['repository'] ?? null);
         $repository = $repositoryData['name'];
         $sourceProvider = $this->stringValue(
@@ -66,11 +66,13 @@ class CompatibilityChecker
                 'domain' => $domain,
                 'aliases' => $this->aliases($manifest, $domain),
                 'type' => $mappedType,
-                'user' => $this->username((string) ($site['username'] ?? $site['user'] ?? ''), $domain, $target),
+                'user' => $this->username($domain, $target),
+                'forge_user' => $this->stringValue($site['username'] ?? $site['user'] ?? ''),
                 'php_version' => $php ?? ($target->installedPHPVersions()[0] ?? '8.4'),
                 'repository' => $repository,
                 'branch' => $branch,
-                'web_directory' => trim((string) ($site['web_directory'] ?? 'public'), '/'),
+                'web_directory' => $this->defaultWebDirectory($mappedType),
+                'forge_web_directory' => $this->stringValue($site['web_directory'] ?? ''),
                 'source_control_provider' => $sourceProvider,
                 'port' => (int) ($site['port'] ?? 3000),
                 'node_version' => '22',
@@ -89,6 +91,31 @@ class CompatibilityChecker
             'wordpress', 'phpmyadmin' => 'php-blank',
             default => 'php',
         };
+    }
+
+    private function siteTypeForManifest(array $manifest): string
+    {
+        $site = $manifest['site'];
+        $type = $this->siteType($this->stringValue($site['app_type'] ?? $site['type'] ?? $site['project_type'] ?? 'php'));
+
+        if ($type !== 'php') {
+            return $type;
+        }
+
+        $scripts = array_filter([
+            $this->stringValue($site['deployment_script'] ?? ''),
+            $this->stringValue($manifest['deployment_script'] ?? ''),
+        ]);
+        $environment = $this->stringValue($manifest['environment'] ?? '');
+        $usesArtisan = str_contains(strtolower(implode("\n", $scripts)), 'artisan');
+        $hasLaravelEnvironment = preg_match('/^\s*APP_KEY\s*=/m', $environment) === 1;
+
+        return $usesArtisan || $hasLaravelEnvironment ? 'laravel' : 'php';
+    }
+
+    private function defaultWebDirectory(string $type): string
+    {
+        return $type === 'laravel' ? 'public' : '';
     }
 
     private function makeCheck(string $key, string $label, bool $matches, string $value): array
@@ -159,18 +186,28 @@ class CompatibilityChecker
         return is_string($value) ? $value : '';
     }
 
-    private function username(string $forgeUser, string $domain, Server $target): string
+    private function username(string $domain, Server $target): string
     {
-        $candidate = strtolower(preg_replace('/[^a-z0-9_-]/', '', $forgeUser) ?: '');
-        $reserved = array_unique(array_merge(config('core.reserved_user_names', []), [$target->getSshUser()]));
-        if (strlen($candidate) >= 3
-            && preg_match('/^[a-z_][a-z0-9_-]*[a-z0-9]$/', $candidate) === 1
-            && ! in_array($candidate, $reserved, true)) {
-            return substr($candidate, 0, 32);
+        $slug = preg_replace('/^https?:\/\//', '', strtolower($domain)) ?? '';
+        $slug = preg_replace('/^www\./', '', $slug) ?? '';
+        $slug = preg_replace('/[^a-z0-9]/', '', $slug) ?? '';
+        $slug = preg_replace('/^\d+/', '', $slug) ?? '';
+        $base = substr($slug, 0, 6);
+        $blocked = array_unique(array_merge(
+            config('core.reserved_user_names', []),
+            [$target->getSshUser()],
+            $target->isolatedUsers()->pluck('username')->all(),
+        ));
+
+        for ($index = 0; $index < 1000; $index++) {
+            $candidate = $index === 0 ? $base : $base.$index;
+            if (strlen($candidate) < 3 || strlen($candidate) > 32 || in_array($candidate, $blocked, true)) {
+                continue;
+            }
+
+            return $candidate;
         }
 
-        $candidate = strtolower(preg_replace('/[^a-z0-9]/', '', explode('.', $domain)[0]));
-
-        return substr('fi_'.($candidate ?: 'site'), 0, 32);
+        return 'siteimport';
     }
 }
