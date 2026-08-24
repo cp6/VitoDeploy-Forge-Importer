@@ -14,8 +14,14 @@ class CompatibilityChecker
         $domain = $this->domain($site);
         $php = $this->phpVersion($site['php_version'] ?? null);
         $mappedType = $this->siteType((string) ($site['app_type'] ?? $site['type'] ?? $site['project_type'] ?? 'php'));
-        $repository = (string) ($site['repository'] ?? '');
-        $sourceProvider = (string) ($site['source_control_provider'] ?? $site['repository_provider'] ?? '');
+        $repositoryData = $this->repository($site['repository'] ?? null);
+        $repository = $repositoryData['name'];
+        $sourceProvider = $this->stringValue(
+            $site['source_control_provider'] ?? $site['repository_provider'] ?? $repositoryData['provider'],
+        );
+        $branch = $this->stringValue(
+            $site['branch'] ?? $site['repository_branch'] ?? $repositoryData['branch'],
+        ) ?: 'main';
 
         $checks = [
             $this->makeCheck('domain', 'Domain is available', $domain !== '' && ! Site::query()->where('server_id', $target->id)->where('domain', $domain)->exists(), $domain ?: 'Missing domain'),
@@ -63,7 +69,7 @@ class CompatibilityChecker
                 'user' => $this->username((string) ($site['username'] ?? $site['user'] ?? ''), $domain, $target),
                 'php_version' => $php ?? ($target->installedPHPVersions()[0] ?? '8.4'),
                 'repository' => $repository,
-                'branch' => (string) ($site['branch'] ?? $site['repository_branch'] ?? 'main'),
+                'branch' => $branch,
                 'web_directory' => trim((string) ($site['web_directory'] ?? 'public'), '/'),
                 'source_control_provider' => $sourceProvider,
                 'port' => (int) ($site['port'] ?? 3000),
@@ -124,6 +130,33 @@ class CompatibilityChecker
         }
 
         return array_values(array_unique($aliases));
+    }
+
+    /**
+     * @return array{name: string, provider: string, branch: string}
+     */
+    private function repository(mixed $repository): array
+    {
+        if (is_string($repository)) {
+            return ['name' => $repository, 'provider' => '', 'branch' => ''];
+        }
+
+        if (! is_array($repository)) {
+            return ['name' => '', 'provider' => '', 'branch' => ''];
+        }
+
+        return [
+            'name' => $this->stringValue(
+                $repository['url'] ?? $repository['repository'] ?? $repository['full_name'] ?? $repository['name'] ?? '',
+            ),
+            'provider' => $this->stringValue($repository['provider'] ?? ''),
+            'branch' => $this->stringValue($repository['branch'] ?? $repository['default_branch'] ?? ''),
+        ];
+    }
+
+    private function stringValue(mixed $value): string
+    {
+        return is_string($value) ? $value : '';
     }
 
     private function username(string $forgeUser, string $domain, Server $target): string
