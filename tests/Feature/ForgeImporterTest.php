@@ -18,7 +18,15 @@ beforeEach(function () {
 test('authenticated users can open the importer', function () {
     $this->get(route('forge-importer.index'))
         ->assertOk()
-        ->assertSee('Laravel Forge Site Importer');
+        ->assertSee('Import from Laravel Forge');
+});
+
+test('the importer serves its compiled Tailwind stylesheet', function () {
+    $this->get(route('forge-importer.styles'))
+        ->assertOk()
+        ->assertHeader('content-type', 'text/css; charset=UTF-8');
+
+    expect(filesize(dirname(__DIR__, 2).'/resources/dist/importer.css'))->toBeGreaterThan(1000);
 });
 
 test('the server feature action for opening the importer is active', function () {

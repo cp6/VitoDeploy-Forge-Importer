@@ -5,81 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Forge Site Importer · {{ config('app.name', 'VitoDeploy') }}</title>
-    <style>
-        :root { color-scheme: light dark; --bg:#f7f7f8; --card:#fff; --text:#18181b; --muted:#71717a; --line:#e4e4e7; --brand:#ef4444; --ok:#15803d; --bad:#b91c1c; --warn:#a16207; }
-        .dark { --bg:#09090b; --card:#18181b; --text:#fafafa; --muted:#a1a1aa; --line:#3f3f46; --brand:#f87171; --ok:#4ade80; --bad:#f87171; --warn:#facc15; }
-        * { box-sizing:border-box } body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif }
-        .shell { max-width:1180px; margin:0 auto; padding:28px 20px 60px } .top { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:24px }
-        h1 { font-size:25px; margin:0 0 4px } h2 { font-size:18px; margin:0 } h3 { margin:0; font-size:16px } p { margin:5px 0; color:var(--muted) }
-        .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; box-shadow:0 1px 2px rgb(0 0 0 / .04) }
-        .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px } .grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)) } .full { grid-column:1/-1 }
-        label { display:block; font-weight:600; margin-bottom:5px } input,select,textarea { width:100%; border:1px solid var(--line); border-radius:7px; padding:9px 10px; background:var(--card); color:var(--text) }
-        input[type=checkbox] { width:auto; accent-color:var(--brand) } button,.button { border:1px solid transparent; border-radius:7px; padding:9px 13px; font-weight:650; cursor:pointer; background:var(--brand); color:#fff; text-decoration:none }
-        button.secondary,.button.secondary { background:transparent; border-color:var(--line); color:var(--text) } button:disabled { opacity:.5; cursor:not-allowed }
-        .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap } .between { justify-content:space-between } .hidden { display:none!important }
-        .notice { border-left:4px solid var(--warn); background:color-mix(in srgb,var(--warn) 10%,transparent); padding:11px 13px; border-radius:5px; margin-bottom:16px }
-        .error { border-color:var(--bad)!important; color:var(--bad) } .status { font-size:12px; border-radius:999px; padding:3px 8px; background:var(--bg); border:1px solid var(--line) }
-        .check { display:flex; align-items:flex-start; gap:7px; padding:5px 0; color:var(--muted) } .check.matched { color:var(--ok) } .check.blocked { color:var(--bad) }
-        .resource-list { display:flex; flex-wrap:wrap; gap:12px; padding:10px 0 } .resource-list label { font-weight:500; margin:0; display:flex; gap:6px; align-items:center }
-        .site-card { border:1px solid var(--line); border-radius:10px; padding:15px; margin-top:13px } .site-card.disabled { opacity:.58 }
-        .progress { height:9px; background:var(--line); border-radius:99px; overflow:hidden; margin:12px 0 } .progress span { display:block; height:100%; width:0; background:var(--brand); transition:width .3s }
-        .result-site { border-top:1px solid var(--line); padding:10px 0 } code { background:var(--bg); border:1px solid var(--line); padding:1px 4px; border-radius:4px }
-        .hint { font-size:12px; margin-top:4px }
-        @media(max-width:760px){ .grid,.grid-3{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column} }
-    </style>
+    <script>
+        if ('{{ $appearance ?? 'system' }}' === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet">
+    <link rel="stylesheet" href="{{ route('forge-importer.styles') }}">
 </head>
-<body>
-<main class="shell">
-    <div class="top">
-        <div><h1>Laravel Forge Site Importer</h1><p>Preview, customize and import up to {{ $maxSites }} sites at once.</p></div>
-        <a href="{{ route('servers') }}" class="button secondary">Back to Vito</a>
+<body class="bg-background text-foreground selection:bg-brand min-h-screen font-sans antialiased selection:text-white">
+<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+    <header class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <div class="max-w-2xl">
+            <p class="text-muted-foreground mb-2 text-sm font-medium">Server migration</p>
+            <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Import from Laravel Forge</h1>
+            <p class="text-muted-foreground mt-2 text-sm sm:text-base">Review and move up to {{ $maxSites }} sites into Vito without changing the source server.</p>
+        </div>
+        <a href="{{ route('servers') }}" class="bg-background hover:bg-muted inline-flex h-9 items-center justify-center rounded-md border px-4 text-sm font-medium shadow-xs transition-colors">Back to servers</a>
+    </header>
+
+    <nav class="mb-8 grid grid-cols-2 overflow-hidden rounded-lg border bg-card sm:grid-cols-4" aria-label="Import progress">
+        @foreach([['Connect', 'Forge account'], ['Select', 'Sites and destination'], ['Review', 'Compatibility'], ['Import', 'Progress and results']] as $index => [$title, $description])
+            <div class="{{ $index > 0 ? 'border-l' : '' }} {{ $index > 1 ? 'border-t sm:border-t-0' : '' }} px-4 py-3">
+                <div class="flex items-baseline gap-2">
+                    <span class="{{ $index === 0 || $connected ? 'text-primary' : 'text-muted-foreground' }} text-xs font-semibold">{{ $index + 1 }}</span>
+                    <span class="text-sm font-medium">{{ $title }}</span>
+                </div>
+                <p class="text-muted-foreground mt-0.5 pl-5 text-xs">{{ $description }}</p>
+            </div>
+        @endforeach
+    </nav>
+
+    <div class="bg-muted/30 text-muted-foreground mb-6 rounded-lg border px-4 py-3 text-sm">
+        <span class="text-foreground font-medium">Read-only on Forge.</span> Database contents, files, DNS, and SSL stay untouched. Imported deployment scripts are saved but not executed.
     </div>
+    <div id="message" class="mb-6 hidden rounded-lg border px-4 py-3 text-sm"></div>
 
-    <div class="notice"><strong>Safe by default.</strong> Forge remains read-only. This importer does not move database contents/files or change DNS/SSL, and imported deployment scripts are not executed.</div>
-    <div id="message" class="card hidden"></div>
-
-    <section class="card" id="connection-card">
-        <div class="row between"><div><h2>1. Connect Forge</h2><p>The token stays in your encrypted Vito session and is not saved with an import.</p></div><span id="connection-status" class="status">{{ $connected ? 'Connected' : 'Not connected' }}</span></div>
-        <form id="connect-form" class="row" style="margin-top:14px">
-            <input id="token" type="password" autocomplete="off" placeholder="Forge API token" style="flex:1;min-width:240px" {{ $connected ? 'disabled' : '' }}>
-            <button type="submit" id="connect-button" {{ $connected ? 'disabled' : '' }}>Connect</button>
-            <button type="button" class="secondary {{ $connected ? '' : 'hidden' }}" id="disconnect-button">Disconnect</button>
+    <section class="overflow-hidden rounded-xl border bg-card shadow-xs" id="connection-card">
+        <div class="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="font-semibold">Forge connection</h2>
+                <p class="text-muted-foreground mt-1 text-sm">The API token is kept in your encrypted Vito session.</p>
+            </div>
+            <span id="connection-status" class="{{ $connected ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/40 dark:text-green-400' : 'bg-muted text-muted-foreground' }} w-fit rounded-md border px-2.5 py-1 text-xs font-medium">{{ $connected ? 'Connected' : 'Not connected' }}</span>
+        </div>
+        <form id="connect-form" class="flex flex-col gap-3 p-5 sm:flex-row">
+            <label class="sr-only" for="token">Forge API token</label>
+            <input id="token" class="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 min-w-0 flex-1 rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50" type="password" autocomplete="off" placeholder="Forge API token" {{ $connected ? 'disabled' : '' }}>
+            <button type="submit" id="connect-button" class="bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-md px-4 text-sm font-medium shadow-xs transition-colors disabled:pointer-events-none disabled:opacity-50" {{ $connected ? 'disabled' : '' }}>Connect</button>
+            <button type="button" class="bg-background hover:bg-muted h-9 rounded-md border px-4 text-sm font-medium shadow-xs transition-colors {{ $connected ? '' : 'hidden' }}" id="disconnect-button">Disconnect</button>
         </form>
     </section>
 
-    <section class="card {{ $connected ? '' : 'hidden' }}" id="selection-card">
-        <h2>2. Choose sites and destination</h2>
-        <div class="grid grid-3" style="margin-top:14px">
-            <div><label for="organization">Forge organization</label><select id="organization"><option value="">Loading…</option></select></div>
-            <div><label for="forge-server">Forge server</label><select id="forge-server" disabled><option value="">Select organization</option></select></div>
-            <div><label for="target-server">Vito destination server</label><select id="target-server">
-                <option value="">Select destination</option>
-                @foreach($servers as $server)<option value="{{ $server['id'] }}" @selected($selectedServer === $server['id'])>{{ $server['name'] }} · {{ $server['status'] }}</option>@endforeach
-            </select></div>
-            <div class="full"><label>Forge sites</label><div id="forge-sites"><p>Select a Forge server.</p></div></div>
-            <div class="full"><label>Discover resources</label><div class="resource-list" id="global-resources">
-                <label><input type="checkbox" value="domains" checked> Domains/aliases</label>
-                <label><input type="checkbox" value="environment" checked> .env</label>
-                <label><input type="checkbox" value="database" checked> Database metadata/setup</label>
-                <label><input type="checkbox" value="deployment_script" checked> Deployment script</label>
-                <label><input type="checkbox" value="cron_jobs" checked> Cron jobs</label>
-                <label><input type="checkbox" value="workers" checked> Background processes</label>
-            </div></div>
+    <section class="mt-6 overflow-hidden rounded-xl border bg-card shadow-xs {{ $connected ? '' : 'hidden' }}" id="selection-card">
+        <div class="border-b px-5 py-4">
+            <h2 class="font-semibold">Choose what to import</h2>
+            <p class="text-muted-foreground mt-1 text-sm">Select the Forge source, Vito destination, and resources to inspect.</p>
         </div>
-        <button id="preview-button" type="button">Generate preview</button>
+        <div class="p-5">
+            <div class="grid gap-5 md:grid-cols-3">
+                <div class="space-y-2"><label class="text-sm font-medium" for="organization">Forge organization</label><select class="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-3" id="organization"><option value="">Loading…</option></select></div>
+                <div class="space-y-2"><label class="text-sm font-medium" for="forge-server">Forge server</label><select class="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-3 disabled:opacity-50" id="forge-server" disabled><option value="">Select organization</option></select></div>
+                <div class="space-y-2"><label class="text-sm font-medium" for="target-server">Vito destination</label><select class="border-input bg-background h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-3" id="target-server">
+                    <option value="">Select destination</option>
+                    @foreach($servers as $server)<option value="{{ $server['id'] }}" @selected($selectedServer === $server['id'])>{{ $server['name'] }} · {{ $server['status'] }}</option>@endforeach
+                </select></div>
+                <div class="space-y-2 md:col-span-3"><span class="text-sm font-medium">Forge sites</span><div id="forge-sites" class="bg-muted/20 text-muted-foreground min-h-12 rounded-lg border px-4 py-3 text-sm">Select a Forge server.</div></div>
+                <fieldset class="space-y-3 md:col-span-3">
+                    <legend class="text-sm font-medium">Resources to inspect</legend>
+                    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" id="global-resources">
+                        @foreach([['domains', 'Domains and aliases'], ['environment', 'Environment variables'], ['database', 'Database setup'], ['deployment_script', 'Deployment script'], ['cron_jobs', 'Cron jobs'], ['workers', 'Background processes']] as [$value, $label])
+                            <label class="hover:bg-muted/40 flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-sm transition-colors"><input class="accent-primary size-4" type="checkbox" value="{{ $value }}" checked> {{ $label }}</label>
+                        @endforeach
+                    </div>
+                </fieldset>
+            </div>
+            <div class="mt-6 flex justify-end border-t pt-5"><button id="preview-button" class="bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-md px-4 text-sm font-medium shadow-xs transition-colors disabled:pointer-events-none disabled:opacity-50" type="button">Generate preview</button></div>
+        </div>
     </section>
 
-    <section class="card hidden" id="preview-card">
-        <div class="row between"><div><h2>3. Review and customize</h2><p>Green ticks match. Red items must be corrected in the editable mapping.</p></div><span class="status" id="plan-expiry"></span></div>
-        <div id="preview-sites"></div>
-        <div class="row" style="margin-top:16px"><button type="button" id="import-button">Start selected imports</button><button type="button" class="secondary" id="back-button">Change selection</button></div>
+    <section class="mt-6 hidden overflow-hidden rounded-xl border bg-card shadow-xs" id="preview-card">
+        <div class="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="font-semibold">Review the import plan</h2><p class="text-muted-foreground mt-1 text-sm">Matched settings are ready. Resolve blocked items or leave that resource unchecked.</p></div><span class="bg-muted text-muted-foreground w-fit rounded-md px-2.5 py-1 text-xs font-medium" id="plan-expiry"></span></div>
+        <div class="space-y-4 p-5" id="preview-sites"></div>
+        <div class="flex flex-col-reverse gap-3 border-t px-5 py-4 sm:flex-row sm:justify-end"><button type="button" class="bg-background hover:bg-muted h-9 rounded-md border px-4 text-sm font-medium shadow-xs transition-colors" id="back-button">Change selection</button><button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 h-9 rounded-md px-4 text-sm font-medium shadow-xs transition-colors disabled:pointer-events-none disabled:opacity-50" id="import-button">Start selected imports</button></div>
     </section>
 
-    <section class="card hidden" id="run-card">
-        <div class="row between"><div><h2>4. Import progress</h2><p id="run-step">Queued</p></div><span class="status" id="run-status">pending</span></div>
-        <div class="progress"><span id="run-progress"></span></div>
-        <div id="run-results"></div>
-        <div class="row"><button type="button" class="secondary hidden" id="retry-button">Retry incomplete</button><button type="button" class="secondary" id="new-button">New import</button></div>
+    <section class="mt-6 hidden overflow-hidden rounded-xl border bg-card shadow-xs" id="run-card">
+        <div class="flex items-start justify-between gap-4 border-b px-5 py-4"><div><h2 class="font-semibold">Import progress</h2><p class="text-muted-foreground mt-1 text-sm" id="run-step">Queued</p></div><span class="bg-muted text-muted-foreground rounded-md px-2.5 py-1 text-xs font-medium" id="run-status">pending</span></div>
+        <div class="p-5"><div class="bg-muted mb-5 h-2 overflow-hidden rounded-full"><span class="bg-primary block h-full w-0 transition-[width]" id="run-progress"></span></div><div class="divide-y" id="run-results"></div></div>
+        <div class="flex gap-3 border-t px-5 py-4"><button type="button" class="bg-background hover:bg-muted hidden h-9 rounded-md border px-4 text-sm font-medium shadow-xs transition-colors" id="retry-button">Retry incomplete</button><button type="button" class="bg-background hover:bg-muted h-9 rounded-md border px-4 text-sm font-medium shadow-xs transition-colors" id="new-button">New import</button></div>
     </section>
 </main>
 
@@ -98,7 +113,7 @@ async function api(url, options = {}) {
     if (!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat()[0] || `Request failed (${response.status})`);
     return data;
 }
-function message(text, bad=false) { const box=$('message'); box.textContent=text; box.className=`card ${bad?'error':''}`; setTimeout(()=>box.classList.add('hidden'),7000); }
+function message(text, bad=false) { const box=$('message'); box.textContent=text; box.className=`mb-6 rounded-lg border px-4 py-3 text-sm ${bad?'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400':'bg-muted/30 text-foreground'}`; setTimeout(()=>box.classList.add('hidden'),7000); }
 function option(value, label) { return `<option value="${esc(value)}">${esc(label)}</option>`; }
 function resourceValues() { return [...document.querySelectorAll('#global-resources input:checked')].map(i=>i.value); }
 
@@ -109,15 +124,15 @@ async function loadOrganizations() {
     } catch(e) { message(e.message,true); }
 }
 async function loadForgeServers() {
-    state.organization=$('organization').value; $('forge-server').disabled=true; $('forge-server').innerHTML='<option>Loading…</option>'; $('forge-sites').innerHTML='<p>Select a Forge server.</p>';
+    state.organization=$('organization').value; $('forge-server').disabled=true; $('forge-server').innerHTML='<option>Loading…</option>'; $('forge-sites').innerHTML='Select a Forge server.';
     if(!state.organization){$('forge-server').innerHTML='<option value="">Select organization</option>';return;}
     try { const {data}=await api(`${CONFIG.urls.forgeServers}?organization=${encodeURIComponent(state.organization)}`); $('forge-server').innerHTML='<option value="">Select server</option>'+data.map(s=>option(s.id,s.name || s.id)).join(''); $('forge-server').disabled=false; }
     catch(e){message(e.message,true);}
 }
 async function loadForgeSites() {
-    state.forgeServer=$('forge-server').value; $('forge-sites').innerHTML='<p>Loading sites…</p>'; if(!state.forgeServer)return;
+    state.forgeServer=$('forge-server').value; $('forge-sites').innerHTML='Loading sites…'; if(!state.forgeServer)return;
     try { const {data}=await api(`${CONFIG.urls.forgeSites}?organization=${encodeURIComponent(state.organization)}&server=${encodeURIComponent(state.forgeServer)}`);
-        $('forge-sites').innerHTML=data.length?data.map(s=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:0 18px 8px 0;font-weight:500"><input class="forge-site" type="checkbox" value="${esc(s.id)}"> ${esc(s.name || s.domain || s.id)}</label>`).join(''):'<p>No sites found.</p>';
+        $('forge-sites').innerHTML=data.length?`<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${data.map(s=>`<label class="bg-background hover:bg-muted/40 flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-foreground transition-colors"><input class="forge-site accent-primary size-4" type="checkbox" value="${esc(s.id)}"> <span class="min-w-0 truncate">${esc(s.name || s.domain || s.id)}</span></label>`).join('')}</div>`:'No sites found.';
     } catch(e){message(e.message,true);}
 }
 async function generatePreview() {
@@ -129,45 +144,48 @@ async function generatePreview() {
 }
 function suggestedSource(provider) { const found=CONFIG.sourceControls.find(s=>String(s.provider).startsWith(provider || '')); return found?.id || CONFIG.sourceControls[0]?.id || ''; }
 function selectOptions(items,current,getValue=x=>x.id,getLabel=x=>x.label) { return items.map(item=>`<option value="${esc(getValue(item))}" ${String(getValue(item))===String(current)?'selected':''}>${esc(getLabel(item))}</option>`).join(''); }
+const inputClass='border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-60';
+const fieldLabelClass='mb-2 block text-sm font-medium';
+function matchSummary(label,matched) { return `<span class="${matched?'text-green-700 dark:text-green-400':'text-muted-foreground'}">${esc(label)}: ${matched?'matched':'not matched'}</span>`; }
 function renderPreview() {
     $('plan-expiry').textContent=`Preview expires in ${state.plan.expires_in_minutes} minutes`;
     $('preview-sites').innerHTML=state.plan.sites.map((item,index)=>{
-        const d=item.defaults, sc=suggestedSource(d.source_control_provider), checks=item.checks.map(c=>`<div class="check ${c.status}"><span>${c.status==='matched'?'✓':'✕'}</span><span>${esc(c.label)}: <code>${esc(c.value)}</code></span></div>`).join('');
+        const d=item.defaults, sc=suggestedSource(d.source_control_provider), checks=item.checks.map(c=>`<div class="flex items-start gap-2 text-sm ${c.status==='matched'?'text-green-700 dark:text-green-400':'text-red-700 dark:text-red-400'}"><span class="font-semibold" aria-hidden="true">${c.status==='matched'?'✓':'×'}</span><span>${esc(c.label)} <span class="text-foreground font-mono text-xs">${esc(c.value)}</span></span></div>`).join('');
         const db=d.database;
         const res={domains:true,environment:item.environment.available,database:db.available,deployment_script:item.deployment_script.available,cron_jobs:item.cron_jobs.length>0,workers:item.workers.length>0};
-        return `<article class="site-card" data-index="${index}" data-site-type="${esc(d.type)}">
-          <div class="row between"><div><h3>${esc(d.domain)}</h3><p>Forge site ${esc(d.forge_site_id)}</p></div><label class="row"><input class="site-enabled" type="checkbox" checked> Import site</label></div>
-          <div style="margin:9px 0">${checks}</div>
-          <div class="grid grid-3">
-            <div><label>Domain</label><input data-field="domain" value="${esc(d.domain)}"></div>
-            <div><label>Vito site type</label><select data-field="type">${selectOptions(CONFIG.siteTypes,d.type)}</select></div>
-            <div><label>Site user</label><input data-field="user" value="${esc(d.user)}"><p class="hint">Vito suggested isolated user. Forge value: <code>${esc(d.forge_user || 'not provided')}</code></p></div>
-            <div data-type-group="php"><label>PHP version</label><input data-field="php_version" value="${esc(d.php_version)}"></div>
-            <div data-type-group="php"><label>Web directory</label><input data-field="web_directory" value="${esc(d.web_directory)}"><p class="hint">Forge value: <code>${esc(d.forge_web_directory || 'site root')}</code></p></div>
-            <div><label>Aliases (comma-separated)</label><input data-field="aliases" value="${esc(d.aliases.join(', '))}"></div>
-            <div data-type-group="source"><label>Source control</label><select data-field="source_control_id"><option value="">None</option>${selectOptions(CONFIG.sourceControls,sc,x=>x.id,x=>`${x.provider} · ${x.profile}`)}</select></div>
-            <div data-type-group="source"><label>Repository</label><input data-field="repository" value="${esc(d.repository)}"></div>
-            <div data-type-group="source"><label>Branch</label><input data-field="branch" value="${esc(d.branch)}"></div>
-            <div data-type-group="proxy"><label>App port</label><input data-field="port" type="number" value="${esc(d.port)}"><p class="hint">Required by Vito for Node and reverse-proxy sites.</p></div>
-            <div data-type-group="node"><label>Node version</label><input data-field="node_version" value="${esc(d.node_version)}"></div>
-            <div data-type-group="proxy"><label>Start command</label><input data-field="start_command" value="${esc(d.start_command)}"></div>
+        return `<article class="site-card overflow-hidden rounded-lg border bg-background transition-opacity" data-index="${index}" data-site-type="${esc(d.type)}">
+          <div class="flex flex-col gap-3 border-b px-4 py-4 sm:flex-row sm:items-center sm:justify-between"><div><h3 class="font-semibold">${esc(d.domain)}</h3><p class="text-muted-foreground mt-1 text-xs">Forge site ${esc(d.forge_site_id)}</p></div><label class="flex cursor-pointer items-center gap-2 text-sm font-medium"><input class="site-enabled accent-primary size-4" type="checkbox" checked> Include this site</label></div>
+          <div class="bg-muted/20 grid gap-2 border-b px-4 py-3 md:grid-cols-2">${checks}</div>
+          <div class="grid gap-5 p-4 md:grid-cols-2 lg:grid-cols-3">
+            <div><label class="${fieldLabelClass}">Domain</label><input class="${inputClass}" data-field="domain" value="${esc(d.domain)}"></div>
+            <div><label class="${fieldLabelClass}">Vito site type</label><select class="${inputClass}" data-field="type">${selectOptions(CONFIG.siteTypes,d.type)}</select></div>
+            <div><label class="${fieldLabelClass}">Site user</label><input class="${inputClass}" data-field="user" value="${esc(d.user)}"><p class="text-muted-foreground mt-1.5 text-xs">Forge: ${esc(d.forge_user || 'not provided')}</p></div>
+            <div data-type-group="php"><label class="${fieldLabelClass}">PHP version</label><input class="${inputClass}" data-field="php_version" value="${esc(d.php_version)}"></div>
+            <div data-type-group="php"><label class="${fieldLabelClass}">Web directory</label><input class="${inputClass}" data-field="web_directory" value="${esc(d.web_directory)}"><p class="text-muted-foreground mt-1.5 truncate text-xs">Forge: ${esc(d.forge_web_directory || 'site root')}</p></div>
+            <div><label class="${fieldLabelClass}">Aliases</label><input class="${inputClass}" data-field="aliases" value="${esc(d.aliases.join(', '))}" placeholder="Comma-separated domains"></div>
+            <div data-type-group="source"><label class="${fieldLabelClass}">Source control</label><select class="${inputClass}" data-field="source_control_id"><option value="">None</option>${selectOptions(CONFIG.sourceControls,sc,x=>x.id,x=>`${x.provider} · ${x.profile}`)}</select></div>
+            <div data-type-group="source"><label class="${fieldLabelClass}">Repository</label><input class="${inputClass}" data-field="repository" value="${esc(d.repository)}"></div>
+            <div data-type-group="source"><label class="${fieldLabelClass}">Branch</label><input class="${inputClass}" data-field="branch" value="${esc(d.branch)}"></div>
+            <div data-type-group="proxy"><label class="${fieldLabelClass}">App port</label><input class="${inputClass}" data-field="port" type="number" value="${esc(d.port)}"><p class="text-muted-foreground mt-1.5 text-xs">Only used for Node and proxy sites.</p></div>
+            <div data-type-group="node"><label class="${fieldLabelClass}">Node version</label><input class="${inputClass}" data-field="node_version" value="${esc(d.node_version)}"></div>
+            <div data-type-group="proxy"><label class="${fieldLabelClass}">Start command</label><input class="${inputClass}" data-field="start_command" value="${esc(d.start_command)}"></div>
           </div>
-          <div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px">
-            <div class="row between"><div><strong>Database setup</strong><p class="hint">${esc(db.reason)} Database contents are not copied.</p></div><label class="row"><input data-field="database_enabled" type="checkbox" ${db.enabled?'checked':''} ${db.available?'':'disabled'}> Create/reuse and update .env</label></div>
-            <div class="grid grid-3" style="margin-top:10px">
-              <div><label>Database name</label><input data-field="database_name" value="${esc(db.name)}"></div>
-              <div><label>Database user</label><input data-field="database_username" value="${esc(db.username)}"></div>
-              <div><label>Detected Forge connection</label><input value="${esc(db.connection)} · ${esc(db.host)}:${esc(db.port)}" disabled></div>
+          <div class="bg-muted/20 border-y px-4 py-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h4 class="text-sm font-semibold">Database</h4><p class="text-muted-foreground mt-1 text-xs">${esc(db.reason)} Contents are not copied.</p></div><label class="flex cursor-pointer items-center gap-2 text-sm font-medium"><input class="accent-primary size-4" data-field="database_enabled" type="checkbox" ${db.enabled?'checked':''} ${db.available?'':'disabled'}> Configure in Vito</label></div>
+            <div class="mt-4 grid gap-4 md:grid-cols-3">
+              <div><label class="${fieldLabelClass}">Database name</label><input class="${inputClass}" data-field="database_name" value="${esc(db.name)}"></div>
+              <div><label class="${fieldLabelClass}">Database user</label><input class="${inputClass}" data-field="database_username" value="${esc(db.username)}"></div>
+              <div><label class="${fieldLabelClass}">Forge connection</label><input class="${inputClass}" value="${esc(db.connection)} · ${esc(db.host)}:${esc(db.port)}" disabled></div>
             </div>
-            <div class="hint">${db.forge_database_match?'✓':'○'} Forge database match · ${db.forge_user_match?'✓':'○'} Forge user match · ${db.vito_database_match?'✓':'○'} Vito database match · ${db.vito_user_match?'✓':'○'} Vito user match${db.has_environment_password?' · password found privately in .env':' · no password returned by Forge'}</div>
+            <div class="text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">${matchSummary('Forge database',db.forge_database_match)}${matchSummary('Forge user',db.forge_user_match)}${matchSummary('Vito database',db.vito_database_match)}${matchSummary('Vito user',db.vito_user_match)}<span>${db.has_environment_password?'Password detected privately':'No password returned by Forge'}</span></div>
           </div>
-          <div class="resource-list"><strong>Import:</strong>
-            ${resourceToggle('domains','Domains/aliases',res.domains)}${resourceToggle('environment',`.env (${item.environment.keys.length} keys)`,res.environment)}${resourceToggle('database','Database setup',res.database)}${resourceToggle('deployment_script',`Deployment script (${item.deployment_script.lines} lines)`,res.deployment_script)}${resourceToggle('cron_jobs',`Cron jobs (${item.cron_jobs.length})`,res.cron_jobs)}${resourceToggle('workers',`Processes (${item.workers.length})`,res.workers)}
-            <label data-type-group="composer"><input data-field="composer" type="checkbox"> Run Composer during site creation</label>
-          </div>
+          <div class="px-4 py-4"><div class="mb-3 text-xs font-semibold tracking-wide uppercase">Resources to import</div><div class="flex flex-wrap gap-2">
+            ${resourceToggle('domains','Domains and aliases',res.domains)}${resourceToggle('environment',`.env · ${item.environment.keys.length} keys`,res.environment)}${resourceToggle('database','Database setup',res.database)}${resourceToggle('deployment_script',`Deploy script · ${item.deployment_script.lines} lines`,res.deployment_script)}${resourceToggle('cron_jobs',`Cron jobs · ${item.cron_jobs.length}`,res.cron_jobs)}${resourceToggle('workers',`Processes · ${item.workers.length}`,res.workers)}
+            <label class="hover:bg-muted/40 flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium" data-type-group="composer"><input class="accent-primary size-3.5" data-field="composer" type="checkbox"> Run Composer</label>
+          </div></div>
         </article>`;
     }).join('');
-    document.querySelectorAll('.site-enabled').forEach(box=>box.addEventListener('change',()=>box.closest('.site-card').classList.toggle('disabled',!box.checked)));
+    document.querySelectorAll('.site-enabled').forEach(box=>box.addEventListener('change',()=>box.closest('.site-card').classList.toggle('opacity-60',!box.checked)));
     document.querySelectorAll('.site-card').forEach(card=>{
       const type=card.querySelector('[data-field="type"]');
       type.addEventListener('change',()=>{
@@ -184,7 +202,7 @@ function syncTypeFields(card) {
     const groups={php:['laravel','php','php-blank'],source:['laravel','php','node','blank'],proxy:['node','blank'],node:['node'],composer:['laravel','php']};
     card.querySelectorAll('[data-type-group]').forEach(field=>field.classList.toggle('hidden',!groups[field.dataset.typeGroup].includes(type)));
 }
-function resourceToggle(key,label,available) { return `<label title="${available?'':'Not returned by Forge'}"><input data-resource="${key}" type="checkbox" ${available?'checked':'disabled'}> ${esc(label)}</label>`; }
+function resourceToggle(key,label,available) { return `<label class="${available?'hover:bg-muted/40 cursor-pointer':'cursor-not-allowed opacity-50'} flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium" title="${available?'':'Not returned by Forge'}"><input class="accent-primary size-3.5" data-resource="${key}" type="checkbox" ${available?'checked':'disabled'}> ${esc(label)}</label>`; }
 function collectSites() {
     return [...document.querySelectorAll('.site-card')].map((card,index)=>{ const d=state.plan.sites[index].defaults, value=(name)=>card.querySelector(`[data-field="${name}"]`); const resources={}; card.querySelectorAll('[data-resource]').forEach(i=>resources[i.dataset.resource]=i.checked);
       return {forge_site_id:String(d.forge_site_id),enabled:card.querySelector('.site-enabled').checked,domain:value('domain').value.trim(),aliases:value('aliases').value.split(',').map(x=>x.trim()).filter(Boolean),type:value('type').value,user:value('user').value.trim(),php_version:value('php_version').value.trim()||null,source_control_id:value('source_control_id').value?Number(value('source_control_id').value):null,repository:value('repository').value.trim()||null,branch:value('branch').value.trim()||null,web_directory:value('web_directory').value.trim(),port:Number(value('port').value||3000),node_version:value('node_version').value.trim()||'22',package_manager:'node',start_command:value('start_command').value.trim()||null,composer:value('composer').checked,database:{enabled:value('database_enabled').checked,name:value('database_name').value.trim()||null,username:value('database_username').value.trim()||null},resources};
@@ -196,7 +214,7 @@ async function startImport() {
     catch(e){message(e.message,true);button.disabled=false;button.textContent='Start selected imports';}
 }
 function renderRun(run) { $('run-status').textContent=run.status; $('run-step').textContent=run.current_step || ''; $('run-progress').style.width=`${run.progress}%`; const sites=run.result?.sites || {};
-    $('run-results').innerHTML=Object.values(sites).map(s=>`<div class="result-site"><div class="row between"><strong>${esc(s.domain || 'Site')}</strong><span class="status">${esc(s.state)}</span></div>${s.vito_site_id?`<p>Vito site ID: ${esc(s.vito_site_id)}</p>`:''}${s.error?`<p class="error">${esc(s.error)}</p>`:''}${(s.warnings||[]).map(w=>`<p style="color:var(--warn)">⚠ ${esc(w)}</p>`).join('')}</div>`).join('');
+    $('run-results').innerHTML=Object.values(sites).map(s=>`<div class="py-4 first:pt-0 last:pb-0"><div class="flex items-center justify-between gap-4"><strong class="text-sm">${esc(s.domain || 'Site')}</strong><span class="bg-muted text-muted-foreground rounded-md px-2.5 py-1 text-xs font-medium">${esc(s.state)}</span></div>${s.vito_site_id?`<p class="text-muted-foreground mt-1 text-xs">Vito site ID: ${esc(s.vito_site_id)}</p>`:''}${s.error?`<p class="mt-2 text-sm text-red-700 dark:text-red-400">${esc(s.error)}</p>`:''}${(s.warnings||[]).map(w=>`<p class="mt-2 text-sm text-amber-700 dark:text-amber-400"><span class="font-medium">Warning:</span> ${esc(w)}</p>`).join('')}</div>`).join('');
     $('retry-button').classList.toggle('hidden',!['failed','partial'].includes(run.status));
 }
 function pollRun() { clearInterval(state.poll); const tick=async()=>{ try { const run=await api(`${CONFIG.urls.runBase}/${state.runId}`); renderRun(run); if(['complete','partial','failed','cancelled'].includes(run.status))clearInterval(state.poll); } catch(e){message(e.message,true);clearInterval(state.poll);} }; tick(); state.poll=setInterval(tick,4000); }

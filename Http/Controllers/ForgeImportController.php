@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Contracts\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 class ForgeImportController extends Controller
@@ -27,6 +28,14 @@ class ForgeImportController extends Controller
     private const SESSION_TOKEN = 'vito-forge-import.token';
 
     private const SUPPORTED_SITE_TYPES = ['laravel', 'php', 'php-blank', 'node', 'blank'];
+
+    public function styles(): BinaryFileResponse
+    {
+        return response()->file(dirname(__DIR__, 2).'/resources/dist/importer.css', [
+            'Content-Type' => 'text/css; charset=UTF-8',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
 
     public function index(Request $request): View
     {

@@ -56,6 +56,7 @@ class Plugin extends AbstractPlugin
             ->prefix('forge-importer')
             ->name('forge-importer.')
             ->group(function (): void {
+                Route::get('/assets/importer.css', [ForgeImportController::class, 'styles'])->name('styles');
                 Route::get('/', [ForgeImportController::class, 'index'])->name('index');
                 Route::post('/connect', [ForgeImportController::class, 'connect'])->name('connect');
                 Route::delete('/connect', [ForgeImportController::class, 'disconnect'])->name('disconnect');

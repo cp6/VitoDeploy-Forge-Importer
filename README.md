@@ -11,6 +11,7 @@ The plugin uses Laravel Forge's current organization-scoped API. It only reads f
 
 - Import a single site or multiple sites in one run (10 by default).
 - Browse Forge organizations, servers, and sites from a Vito GUI.
+- Use a responsive Tailwind CSS interface built from Vito's typography, color, spacing, and dark-mode tokens.
 - Compare Forge settings with the selected Vito server and show matched or blocked checks.
 - Show a green database detection check for connections such as MySQL, MariaDB, PostgreSQL, and SQLite.
 - Start from Vito-native defaults for site type, isolated user, web directory, and type-specific fields while showing the original Forge values for reference.
@@ -64,6 +65,15 @@ app/Vito/Plugins/Cp6/VitoDeployForgeImporter
 ```
 
 Then install and enable it from Vito's plugin administration screen.
+
+### Frontend development
+
+The release includes a compiled Tailwind stylesheet, so Vito installations do not need Node.js to run the plugin. When changing classes in `resources/views/importer.blade.php`, rebuild the committed stylesheet with:
+
+```bash
+npm install
+npm run build:css
+```
 
 ## Using the importer
 
