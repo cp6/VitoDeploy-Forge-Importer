@@ -238,18 +238,27 @@ class CompatibilityChecker
     private function repository(mixed $repository): array
     {
         if (is_string($repository)) {
-            return ['name' => $repository, 'provider' => '', 'branch' => ''];
+            $normalizer = new RepositoryNormalizer;
+
+            return [
+                'name' => $normalizer->normalize($repository),
+                'provider' => $normalizer->provider($repository),
+                'branch' => '',
+            ];
         }
 
         if (! is_array($repository)) {
             return ['name' => '', 'provider' => '', 'branch' => ''];
         }
 
+        $value = $this->stringValue(
+            $repository['full_name'] ?? $repository['repository'] ?? $repository['url'] ?? $repository['name'] ?? '',
+        );
+        $normalizer = new RepositoryNormalizer;
+
         return [
-            'name' => $this->stringValue(
-                $repository['url'] ?? $repository['repository'] ?? $repository['full_name'] ?? $repository['name'] ?? '',
-            ),
-            'provider' => $this->stringValue($repository['provider'] ?? ''),
+            'name' => $normalizer->normalize($value),
+            'provider' => $this->stringValue($repository['provider'] ?? '') ?: $normalizer->provider($value),
             'branch' => $this->stringValue($repository['branch'] ?? $repository['default_branch'] ?? ''),
         ];
     }

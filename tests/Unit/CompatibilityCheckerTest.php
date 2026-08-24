@@ -14,7 +14,7 @@ test('it maps the nested repository returned by the current Forge API', function
             'app_type' => 'laravel',
             'repository' => [
                 'provider' => 'github',
-                'url' => 'cp6/example',
+                'url' => 'https://github.com/cp6/example.git',
                 'branch' => 'develop',
                 'status' => 'installed',
             ],
@@ -28,6 +28,25 @@ test('it maps the nested repository returned by the current Forge API', function
         ->repository->toBe('cp6/example')
         ->branch->toBe('develop')
         ->source_control_provider->toBe('github');
+});
+
+test('it normalizes an SSH repository URL returned as a legacy string', function () {
+    $manifest = [
+        'site' => [
+            'id' => '47',
+            'name' => 'ssh-preview.example',
+            'app_type' => 'laravel',
+            'repository' => 'git@gitlab.com:cp6/team/example.git',
+            'repository_branch' => 'main',
+        ],
+        'domains' => [],
+    ];
+
+    $result = (new CompatibilityChecker)->check($manifest, $this->server);
+
+    expect($result['defaults'])
+        ->repository->toBe('cp6/team/example')
+        ->source_control_provider->toBe('gitlab');
 });
 
 test('it remains compatible with legacy string repository values', function () {

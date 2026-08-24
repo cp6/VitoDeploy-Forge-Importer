@@ -17,6 +17,7 @@ use App\Models\Server;
 use App\Models\Site;
 use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Import\ContentTranslator;
 use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Import\EnvironmentValues;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Import\RepositoryNormalizer;
 use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Models\ImportRun;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -153,6 +154,7 @@ class RunImportJob implements ShouldQueue
     {
         $server = Server::query()->findOrFail($run->target_server_id);
         $type = $selected['type'];
+        $repository = app(RepositoryNormalizer::class)->normalize($selected['repository'] ?? null);
         $input = [
             'type' => $type,
             'domain' => $selected['domain'],
@@ -160,7 +162,7 @@ class RunImportJob implements ShouldQueue
             'user' => $selected['user'],
             'php_version' => $selected['php_version'] ?? null,
             'source_control' => $selected['source_control_id'] ?? null,
-            'repository' => $selected['repository'] ?? null,
+            'repository' => $repository !== '' ? $repository : null,
             'branch' => $selected['branch'] ?? 'main',
             'web_directory' => $selected['web_directory'] ?? '',
             'composer' => (bool) ($selected['composer'] ?? false),
@@ -168,7 +170,7 @@ class RunImportJob implements ShouldQueue
             'node_version' => $selected['node_version'] ?? '22',
             'package_manager' => $selected['package_manager'] ?? 'node',
             'start_command' => $selected['start_command'] ?? 'npm start',
-            'use_source_control' => ! empty($selected['source_control_id']) && ! empty($selected['repository']),
+            'use_source_control' => ! empty($selected['source_control_id']) && $repository !== '',
         ];
 
         return app(CreateSite::class)->create($server, $input);
