@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Vito\Plugins\Cp6\VitoDeployForgeImport\Import;
+namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Import;
 
 use App\Models\Server;
 use App\Models\Site;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Vito\Plugins\Cp6\VitoDeployForgeImport\ServerFeatures;
+namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter\ServerFeatures;
 
 use App\DTOs\DynamicField;
 use App\DTOs\DynamicForm;

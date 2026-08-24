@@ -1,6 +1,6 @@
 <?php
 
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Forge\ForgeApiClient;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Forge\ForgeApiClient;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 

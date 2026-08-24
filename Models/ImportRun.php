@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Vito\Plugins\Cp6\VitoDeployForgeImport\Models;
+namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Models;
 
 use Illuminate\Database\Eloquent\Model;
 

@@ -56,7 +56,7 @@ The plugin does not need a user-profile scope and does not use Forge's deprecate
 For local development, clone the repository into the Vito application at:
 
 ```text
-app/Vito/Plugins/Cp6/VitoDeployForgeImport
+app/Vito/Plugins/Cp6/VitoDeployForgeImporter
 ```
 
 Then install and enable it from Vito's plugin administration screen.
@@ -122,7 +122,7 @@ Releases and tags are used by Vito's plugin updater. Review the release notes, u
 The tests run inside a VitoDeploy 4.x checkout after the plugin is placed at the local-development path shown above:
 
 ```bash
-php artisan test app/Vito/Plugins/Cp6/VitoDeployForgeImport/tests
+php artisan test app/Vito/Plugins/Cp6/VitoDeployForgeImporter/tests
 ```
 
 ## License

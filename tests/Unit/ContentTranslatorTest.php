@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Site;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Import\ContentTranslator;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Import\ContentTranslator;
 
 test('it translates Forge deployment variables and site paths', function () {
     $site = new Site([

@@ -1,6 +1,6 @@
 <?php
 
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Plugin;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Plugin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;

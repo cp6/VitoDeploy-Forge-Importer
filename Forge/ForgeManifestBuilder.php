@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Vito\Plugins\Cp6\VitoDeployForgeImport\Forge;
+namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Forge;
 
 class ForgeManifestBuilder
 {

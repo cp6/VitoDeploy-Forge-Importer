@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Vito\Plugins\Cp6\VitoDeployForgeImport\Http\Controllers;
+namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Server;
 use App\Models\Site;
 use App\Models\SourceControl;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Database\SchemaManager;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Forge\ForgeApiClient;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Forge\ForgeManifestBuilder;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Import\CompatibilityChecker;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Jobs\RunImportJob;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Models\ImportRun;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Database\SchemaManager;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Forge\ForgeApiClient;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Forge\ForgeManifestBuilder;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Import\CompatibilityChecker;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Jobs\RunImportJob;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Models\ImportRun;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;

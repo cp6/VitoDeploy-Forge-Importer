@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Vito\Plugins\Cp6\VitoDeployForgeImport\Jobs;
+namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Jobs;
 
 use App\Actions\CronJob\CreateCronJob;
 use App\Actions\Site\CreateSite;
@@ -10,8 +10,8 @@ use App\Actions\Worker\CreateWorker;
 use App\Enums\SiteStatus;
 use App\Models\Server;
 use App\Models\Site;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Import\ContentTranslator;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Models\ImportRun;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Import\ContentTranslator;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Models\ImportRun;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Vito\Plugins\Cp6\VitoDeployForgeImport\Forge;
+namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Forge;
 
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;

@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Vito\Plugins\Cp6\VitoDeployForgeImport;
+namespace App\Vito\Plugins\Cp6\VitoDeployForgeImporter;
 
 use App\Plugins\AbstractPlugin;
 use App\Plugins\RegisterServerFeature;
 use App\Plugins\RegisterServerFeatureAction;
 use App\Plugins\RegisterViews;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Database\SchemaManager;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\Http\Controllers\ForgeImportController;
-use App\Vito\Plugins\Cp6\VitoDeployForgeImport\ServerFeatures\OpenImporter;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Database\SchemaManager;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\Http\Controllers\ForgeImportController;
+use App\Vito\Plugins\Cp6\VitoDeployForgeImporter\ServerFeatures\OpenImporter;
 use Illuminate\Support\Facades\Route;
 
 class Plugin extends AbstractPlugin
