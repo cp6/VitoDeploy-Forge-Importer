@@ -41,9 +41,7 @@ test('the server feature modal action navigates to the importer', function () {
             'action' => 'open',
         ]))
         ->assertStatus(409)
-        ->assertHeader('X-Inertia-Location', route('forge-importer.index', [
-            'server' => $this->server->id,
-        ]));
+        ->assertHeader('X-Inertia-Location', url('/forge-importer').'?server='.$this->server->id);
 });
 
 test('a valid Forge token can be connected without returning it', function () {

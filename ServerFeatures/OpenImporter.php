@@ -28,16 +28,21 @@ class OpenImporter extends Action
                 ->alert()
                 ->label('Forge Site Importer')
                 ->description('Open the importer to preview and migrate one or more Forge sites. ')
-                ->link('Open importer', route('forge-importer.index', ['server' => $this->server->id])),
+                ->link('Open importer', $this->importerUrl()),
         ]);
     }
 
     public function handle(Request $request): void
     {
         throw new HttpResponseException(
-            Inertia::location(
-                route('forge-importer.index', ['server' => $this->server->id]),
-            ),
+            Inertia::location($this->importerUrl()),
         );
+    }
+
+    private function importerUrl(): string
+    {
+        return url('/forge-importer').'?'.http_build_query([
+            'server' => $this->server->id,
+        ]);
     }
 }
